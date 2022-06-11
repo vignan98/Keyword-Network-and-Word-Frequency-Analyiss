@@ -1,0 +1,492 @@
+---
+title: "Project_2"
+output: html_document
+---
+
+
+```{r}
+library(dplyr)
+library(readr)
+library(stringr)
+library(igraph)
+library(dplyr)
+library(ggplot2)
+library(tm)
+library(tidytext)
+library(janeaustenr)
+library(tidyr)
+library(ggraph)
+```
+
+#Task 1
+
+## 1. Use the solution from homework 1 question 3.1 as the adjacency matrix
+
+The Adjacency Matrix code:
+
+```{r}
+
+#Read the data file
+df_kw <- read.csv("Keyword_data - Keyword_data.csv", header = TRUE)
+
+#Removing the first column and blank rows
+df_kw <- subset(df_kw,select = -c(Title))
+df_kw <- df_kw[!apply(df_kw == "", 1, all),]
+
+#Creating a single combined vector of keywords
+df_kw_row_list <- split(df_kw,1:nrow(df_kw))
+kw_vector <- unlist(df_kw_row_list, use.names = FALSE)
+kw_vector <- kw_vector[!is.na(kw_vector) & kw_vector != ""]
+comb_vector <- unique(kw_vector)
+
+#Creating Weighted Adjacency Matrix
+df_to_mat <- matrix(df_kw)
+
+weighted_adjacency_matrix = matrix(0,length(comb_vector),length(comb_vector))
+rownames (weighted_adjacency_matrix) <- comb_vector
+colnames(weighted_adjacency_matrix) <- comb_vector
+
+#Populating the Weighted Adjacency Matrix
+for(i in 1:nrow(df_kw)) {
+    row <- df_kw[i,]
+    row <- row[!is.na(row) & row != ""]
+    for (j in 1:length(row)) {
+      for (k in 1:length(row)) {
+        if (j != k) {
+        weighted_adjacency_matrix[row[j],row[k]] = weighted_adjacency_matrix[row[j],row[k]] + 1
+        }
+      }
+    }
+}
+```
+
+## 2. Read the adjacency matrix and convert it into a weighted network
+
+
+```{r}
+ig<- graph_from_adjacency_matrix(
+  weighted_adjacency_matrix,
+  mode =  ("undirected"),
+  weighted = TRUE,
+  diag = TRUE,
+  add.colnames = NULL,
+  add.rownames = NA
+)
+plot(ig)
+
+
+```
+
+## 3. Compute node degree and strength
+
+```{r}
+
+
+ig_deg <- degree(ig, mode="all")
+
+ig_strength <- strength(ig,vids = V(ig))
+
+
+```
+
+## 4. Show the top 10 nodes by degree and top 10 nodes by strength
+
+```{r}
+df_degree<- data.frame(Degree = ig_deg)
+
+#Top 10 nodes by degree
+ig_degree_highest10 <- df_degree %>%  
+  arrange(desc(ig_deg)) %>%
+  head(10)
+
+ig_degree_highest10
+```
+```{r}
+df_strength<- data.frame(Strength = ig_strength)
+
+#Top 10 nodes by degree
+ig_strength_highest10 <- df_strength %>%  
+  arrange(desc(ig_strength)) %>%
+  head(10)
+
+ig_strength_highest10
+```
+
+## 5. Show the top 10 node pairs by weight
+
+
+```{r}
+node_pair_weights = data_frame()
+for (i in 1:length(rownames(weighted_adjacency_matrix)))
+{
+  for (j in 1:length(colnames(weighted_adjacency_matrix)))
+  {
+    if(j>i && weighted_adjacency_matrix[i,j]>0)
+    {
+      a = data_frame(keyword = paste(rownames(weighted_adjacency_matrix)[i],
+                                    colnames(weighted_adjacency_matrix)[j], 
+                                    sep =" - "), 
+                    weight = (weighted_adjacency_matrix)[i,j])
+      node_pair_weights = rbind(node_pair_weights,a)
+    }
+  }
+}
+
+highest_10_node_pairs_weight <- node_pair_weights %>%
+  arrange(desc(weight)) %>%
+  head(10)
+highest_10_node_pairs_weight
+```
+
+
+## 6. Plot average strength on y-axis and degree on x-axis
+
+```{r}
+
+avg_strength <- mean(ig_strength)
+
+graph_data <- data.frame(ig_deg,ig_strength)
+
+ggplot(graph_data, aes(x = ig_deg, y = avg_strength))  +
+  geom_point() +
+  xlab("Degree")+
+  ylab("Average Strength")
+  ggtitle("Average Strength vs Degree")
+
+```
+# Task 2
+
+#2.1 - Finding the frequency of words using stopwords
+
+```{r}
+
+data17 <- read_csv('2017.csv')
+data18 <- read_csv('2018.csv')
+data19 <- read_csv('2019.csv')
+data20 <- read_csv('2020.csv')
+data21 <- read_csv('2021.csv')
+
+```
+
+#For the year 2017
+```{r}
+data2017<- as.data.frame(data17['tweet'])
+data2017_tokenized <- data2017 %>% unnest_tokens(word, 'tweet')
+data2017_final <- data2017_tokenized %>% 
+  group_by(word) %>%
+  summarise(number=n())
+
+data2017_final1 <- filter(data2017_final, !(word %in%  stopwords()))
+
+data2017_final1
+
+```
+
+#For the year 2018
+
+```{r}
+data2018<- as.data.frame(data18['tweet'])
+data2018_tokenized <- data2018 %>% unnest_tokens(word, 'tweet')
+data2018_final <- data2018_tokenized %>% 
+  group_by(word) %>%
+  summarise(number=n())
+data2018_final1 <- filter(data2018_final, !(word %in%  stopwords()))
+
+data2018_final1
+```
+
+#For the year 2019
+
+```{r}
+data2019<- as.data.frame(data19['tweet'])
+data2019_tokenized <- data2019 %>% unnest_tokens(word, 'tweet')
+data2019_final <- data2019_tokenized %>% 
+  group_by(word) %>%
+  summarise(number=n())
+data2019_final1 <- filter(data2019_final, !(word %in%  stopwords()))
+
+data2019_final1
+```
+
+#For the year 2020
+
+```{r}
+data2020<- as.data.frame(data20['tweet'])
+data2020_tokenized <- data2020 %>% unnest_tokens(word, 'tweet')
+data2020_final <- data2020_tokenized %>% 
+  group_by(word) %>%
+  summarise(number=n())
+data2020_final1 <- filter(data2020_final, !(word %in%  stopwords()))
+
+data2020_final1
+
+```
+
+#For the Year 2021
+
+```{r}
+data2021<- as.data.frame(data21['tweet'])
+data2021_tokenized <- data2021 %>% unnest_tokens(word, 'tweet')
+data2021_final <- data2021_tokenized %>% 
+  group_by(word) %>%
+  summarise(number=n()) 
+data2021_final1 <- filter(data2021_final, !(word %in%  stopwords()))
+
+data2021_final1
+```
+
+## 2.2 --  Top 10 per each year by the highest value of word frequency
+
+```{r}
+data2017_final12 <- data2017_final1 %>% arrange(desc(number))
+data2017_final12 <- head(data2017_final12,10)
+
+data2018_final12<-  data2018_final1 %>% arrange(desc(number))
+data2018_final12 <- head(data2018_final12,10)
+
+data2019_final12<-  data2019_final1 %>% arrange(desc(number))
+data2019_final12 <- head(data2019_final12,10)
+
+data2020_final12<-  data2020_final1 %>% arrange(desc(number))
+data2020_final12 <- head(data2020_final12,10)
+
+data2021_final12<-  data2021_final1 %>% arrange(desc(number))
+data2021_final12 <- head(data2021_final12,10)
+
+```
+
+##2.3 Histogram of word frequencies
+
+```{r}
+data2017_final12['Frequency']= round(data2017_final12['number']/sum(data2017_final12['number']),5)
+
+ggplot(data2017_final12, aes(Frequency,fill=factor(2017))) + 
+  geom_histogram(bins=15)
+```
+```{r}
+data2018_final12['Frequency']= round(data2018_final12['number']/sum(data2018_final12['number']),5)
+
+ggplot(data2018_final12, aes(Frequency,fill=factor(2018))) + 
+  geom_histogram(bins=15)
+```
+```{r}
+data2019_final12['Frequency']= round(data2019_final12['number']/sum(data2019_final12['number']),5)
+
+ggplot(data2019_final12, aes(Frequency,fill=factor(2019))) + 
+  geom_histogram(bins=15)
+```
+
+```{r}
+
+data2020_final12['Frequency']= round(data2020_final12['number']/sum(data2020_final12['number']),5)
+
+ggplot(data2020_final12, aes(Frequency,fill=factor(2020))) + 
+  geom_histogram(bins=15)
+
+```
+```{r}
+data2021_final12['Frequency']= round(data2021_final12['number']/sum(data2021_final12['number']),5)
+
+ggplot(data2021_final12, aes(Frequency,fill=factor(2021))) + 
+  geom_histogram(bins=15)
+
+```
+
+#2.4 Use Zipf’s law and plot log-log plots of word frequencies and rank for each year
+
+```{r}
+data2017_final112 <- data2017_final12 %>%  mutate(rank=row_number())
+
+lm(log10(Frequency) ~ log10(rank), data = data2017_final112)
+
+ggplot(data2017_final112, aes(rank, Frequency)) + 
+  geom_abline(intercept = -0.5969, slope = -0.7054, 
+              color = "red") +
+  geom_line(size=1.5) +
+  scale_x_log10() +
+  scale_y_log10()
+```
+
+```{r}
+data2018_final112 <- data2018_final12 %>%  mutate(rank=row_number())
+
+lm(log10(Frequency) ~ log10(rank), data = data2018_final112)
+
+ggplot(data2018_final112, aes(rank, Frequency)) + 
+  geom_abline(intercept = -0.6929, slope = -0.5179, 
+              color = "red", linetype = 2) +
+  geom_line(size = 1.5) + 
+  scale_x_log10() +
+  scale_y_log10()
+```
+
+
+````{r}
+data2019_final112 <- data2019_final12 %>%  mutate(rank=row_number())
+
+lm(log10(Frequency) ~ log10(rank), data = data2019_final112)
+
+ggplot(data2019_final112, aes(rank, Frequency)) + 
+  geom_abline(intercept = -0.6448, slope = -0.6089, 
+              color = "blue", linetype = 2) +
+  geom_line(size = 1.5) + 
+  scale_x_log10() +
+  scale_y_log10()
+
+```
+
+```{r}
+data2020_final112 <- data2020_final12 %>%  mutate(rank=row_number())
+
+lm(log10(Frequency) ~ log10(rank), data = data2020_final112)
+
+ggplot(data2020_final112, aes(rank, Frequency)) + 
+  geom_abline(intercept = -0.6803, slope = -0.5425, 
+              color = "red", linetype = 2) +
+  geom_line(size = 1.5) + 
+  scale_x_log10() +
+  scale_y_log10()
+```
+
+
+```{r}
+data2021_final112 <- data2021_final12 %>%  mutate(rank=row_number())
+
+lm(log10(Frequency) ~ log10(rank), data = data2021_final112)
+
+ggplot(data2021_final112, aes(rank, Frequency)) + 
+  geom_abline(intercept = -0.6871, slope = -0.5295, 
+              color = "red", linetype = 2) +
+  geom_line(size = 1.5) + 
+  scale_x_log10() +
+  scale_y_log10()
+
+```
+
+#2.5 Create bigram network graphs for each year
+```{r}
+data2017_full <- data2017 %>%
+  unnest_tokens(w1, tweet, token = "ngrams", n = 2) 
+
+data2017_full_wording<- data2017_full %>%
+  separate(w1, c("w1", "w2"), sep = " ")
+data2017_filtered <-  data2017_full_wording %>%
+  filter(!w1 %in% stopwords()) %>%
+  filter(!w2 %in% stopwords())
+data2017_filtered_number <- data2017_filtered %>% 
+   count(w1, w2, sort = TRUE)
+data2017_filtered_number<- data2017_filtered_number %>% drop_na()
+
+data2017_filtered_graph<- data2017_filtered_number %>% filter(n>15) %>%
+  
+  graph_from_data_frame()
+a <- grid::arrow(type = "closed", length = unit(.15, "inches"))
+
+ggraph(data2017_filtered_graph, layout = "fr") +
+  geom_edge_link() +
+  geom_node_point(color = "red") +
+  geom_node_text(aes(label = name)) 
+
+
+```
+
+```{r}
+data2018_full <- data2018 %>%
+  unnest_tokens(w1, tweet, token = "ngrams", n = 2) 
+
+data2018_full_wording<- data2018_full %>%
+  separate(w1, c("w1", "w2"), sep = " ")
+data2018_filtered <-  data2018_full_wording %>%
+  filter(!w1 %in% stopwords()) %>%
+  filter(!w2 %in% stopwords())
+data2018_filtered_number <- data2018_filtered %>% 
+   count(w1, w2, sort = TRUE)
+data2018_filtered_number<- data2018_filtered_number %>% drop_na()
+
+data2018_filtered_graph<- data2018_filtered_number %>% filter(n>15) %>%
+  
+  graph_from_data_frame()
+a <- grid::arrow(type = "closed", length = unit(.8, "inches"))
+
+ggraph(data2018_filtered_graph, layout = "fr") +
+  geom_edge_link() +
+  geom_node_point(color = "red") +
+  geom_node_text(aes(label = name)) 
+
+```
+
+```{r}
+data2019_full <- data2019 %>%
+  unnest_tokens(w1, tweet, token = "ngrams", n = 2) 
+
+data2019_full_wording<- data2019_full %>%
+  separate(w1, c("w1", "w2"), sep = " ")
+data2019_filtered <-  data2019_full_wording %>%
+  filter(!w1 %in% stopwords()) %>%
+  filter(!w2 %in% stopwords())
+data2019_filtered_number <- data2019_filtered %>% 
+   count(w1, w2, sort = TRUE)
+data2019_filtered_number<- data2019_filtered_number %>% drop_na()
+
+data2019_filtered_graph<- data2019_filtered_number %>% filter(n>15) %>%
+  
+  graph_from_data_frame()
+a <- grid::arrow(type = "closed", length = unit(.8, "inches"))
+
+ggraph(data2019_filtered_graph, layout = "fr") +
+  geom_edge_link() +
+  geom_node_point(color = "red") +
+  geom_node_text(aes(label = name)) 
+
+```
+
+```{r}
+data2020_full <- data2020 %>%
+  unnest_tokens(w1, tweet, token = "ngrams", n = 2) 
+
+data2020_full_wording<- data2020_full %>%
+  separate(w1, c("w1", "w2"), sep = " ")
+data2020_filtered <-  data2020_full_wording %>%
+  filter(!w1 %in% stopwords()) %>%
+  filter(!w2 %in% stopwords())
+data2020_filtered_number <- data2020_filtered %>% 
+   count(w1, w2, sort = TRUE)
+data2020_filtered_number<- data2020_filtered_number %>% drop_na()
+
+data2020_filtered_graph<- data2020_filtered_number %>% filter(n>15) %>%
+  
+  graph_from_data_frame()
+a <- grid::arrow(type = "closed", length = unit(.8, "inches"))
+
+ggraph(data2020_filtered_graph, layout = "fr") +
+  geom_edge_link() +
+  geom_node_point(color = "red") +
+  geom_node_text(aes(label = name))
+
+```
+
+
+```{r}
+data2021_full <- data2021 %>%
+  unnest_tokens(w1, tweet, token = "ngrams", n = 2) 
+
+data2021_full_wording<- data2021_full %>%
+  separate(w1, c("w1", "w2"), sep = " ")
+data2021_filtered <-  data2021_full_wording %>%
+  filter(!w1 %in% stopwords()) %>%
+  filter(!w2 %in% stopwords())
+data2021_filtered_number <- data2021_filtered %>% 
+   count(w1, w2, sort = TRUE)
+data2021_filtered_number<- data2021_filtered_number %>% drop_na()
+
+data2021_filtered_graph<- data2021_filtered_number %>% filter(n>25) %>%
+  
+  graph_from_data_frame()
+a <- grid::arrow(type = "closed", length = unit(.15, "inches"))
+
+ggraph(data2021_filtered_graph, layout = "fr") +
+  geom_edge_link() +
+  geom_node_point(color = "red") +
+  geom_node_text(aes(label = name)) 
+
+```
